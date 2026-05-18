@@ -1,4 +1,22 @@
 const LANGUAGES = ["Portuguese", "Haitian Creole", "Spanish", "French"];
+const LANGUAGE_FLAGS = {
+  Portuguese: {
+    label: "Brazil",
+    emoji: "\uD83C\uDDE7\uD83C\uDDF7",
+  },
+  "Haitian Creole": {
+    label: "Haiti",
+    emoji: "\uD83C\uDDED\uD83C\uDDF9",
+  },
+  Spanish: {
+    label: "Venezuela",
+    emoji: "\uD83C\uDDFB\uD83C\uDDEA",
+  },
+  French: {
+    label: "Benin",
+    emoji: "\uD83C\uDDE7\uD83C\uDDEF",
+  },
+};
 const DAILY_TASKS = ["Read BoM", "Pray", "Flash cards"];
 const SUPPLEMENTARY_TASKS = [
   "Podcast",
@@ -36,6 +54,9 @@ const calendarMonths = document.querySelector("#calendarMonths");
 const exportButton = document.querySelector("#exportButton");
 const importFile = document.querySelector("#importFile");
 const backupStatus = document.querySelector("#backupStatus");
+const manifestLink = document.querySelector("link[rel='manifest']");
+const faviconLink = document.querySelector("link[rel='icon']");
+const appleTouchIconLink = document.querySelector("link[rel='apple-touch-icon']");
 
 init();
 
@@ -58,6 +79,42 @@ function loadState() {
 
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function updateAppIcon(language) {
+  const flag = LANGUAGE_FLAGS[language] || LANGUAGE_FLAGS.Portuguese;
+  const svg = [
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'>",
+    "<rect width='512' height='512' rx='96' fill='#1f6f5b'/>",
+    "<circle cx='256' cy='256' r='168' fill='#ffffff'/>",
+    `<text x='256' y='306' text-anchor='middle' font-size='218' font-family='Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji, sans-serif'>${flag.emoji}</text>`,
+    "</svg>",
+  ].join("");
+  const url = `data:image/svg+xml,${encodeURIComponent(svg)}`;
+  const manifest = {
+    name: "Language Practice",
+    short_name: "Practice",
+    description: "Track rotating daily language practice and supplementary activities.",
+    start_url: "./",
+    scope: "./",
+    display: "standalone",
+    background_color: "#eef2f1",
+    theme_color: "#1f6f5b",
+    icons: [
+      {
+        src: url,
+        sizes: "any",
+        type: "image/svg+xml",
+        purpose: "any maskable",
+      },
+    ],
+  };
+  const manifestUrl = `data:application/manifest+json,${encodeURIComponent(JSON.stringify(manifest))}`;
+  document.title = `${flag.emoji} Language Practice`;
+  manifestLink.href = manifestUrl;
+  faviconLink.href = url;
+  appleTouchIconLink.href = url;
+  appleTouchIconLink.setAttribute("aria-label", `${flag.label} flag icon`);
 }
 
 function bindEvents() {
@@ -122,6 +179,7 @@ function render() {
   setupPanel.hidden = true;
   appPanel.hidden = false;
   const target = currentTargetLanguage();
+  updateAppIcon(target);
   targetLanguage.textContent = target;
   weekRange.textContent = formatWeekRange(currentWeekStart());
   todayDate.textContent = formatLongDate(new Date());
