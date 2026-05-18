@@ -1,0 +1,18 @@
+{
+  "name": "Language Practice",
+  "short_name": "Practice",
+  "description": "Track rotating daily language practice and supplementary activities.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#eef2f1",
+  "theme_color": "#1f6f5b",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

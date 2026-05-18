@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#1f6f5b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Practice">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>Language Practice</title>
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" href="icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="icon.svg">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section id="setupPanel" class="setup-panel" hidden>
+        <div class="setup-copy">
+          <p class="eyebrow">First launch</p>
+          <h1>Choose this week&rsquo;s target language</h1>
+          <p>The app will rotate every Sunday from that anchor week.</p>
+        </div>
+        <div id="setupLanguages" class="language-grid" aria-label="Choose current target language"></div>
+      </section>
+
+      <section id="appPanel" hidden>
+        <header class="topbar">
+          <div>
+            <p class="eyebrow" id="weekRange"></p>
+            <h1 id="targetLanguage">Language Practice</h1>
+          </div>
+          <button id="resetAnchorButton" class="icon-button" type="button" title="Change current week language" aria-label="Change current week language">
+            <span aria-hidden="true">↻</span>
+          </button>
+        </header>
+
+        <section class="today-panel" aria-labelledby="dailyHeading">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow" id="todayDate"></p>
+              <h2 id="dailyHeading">Daily</h2>
+            </div>
+            <div class="completion-pill" id="dailySummary"></div>
+          </div>
+          <div id="dailyTasks" class="daily-list"></div>
+        </section>
+
+        <section class="supplement-panel" aria-labelledby="supplementHeading">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Extra practice</p>
+              <h2 id="supplementHeading">Supplementary</h2>
+            </div>
+          </div>
+          <form id="supplementForm" class="supplement-form">
+            <label>
+              <span>Activity</span>
+              <select id="supplementTask" required></select>
+            </label>
+            <label>
+              <span>Language</span>
+              <select id="supplementLanguage" required></select>
+            </label>
+            <button type="submit">Add</button>
+          </form>
+          <div id="supplementList" class="supplement-list" aria-live="polite"></div>
+        </section>
+
+        <section class="calendar-panel" aria-labelledby="calendarHeading">
+          <div class="section-heading calendar-heading">
+            <div>
+              <p class="eyebrow">Streaks</p>
+              <h2 id="calendarHeading">Activity Calendar</h2>
+            </div>
+            <label class="filter-control">
+              <span>View</span>
+              <select id="calendarFilter"></select>
+            </label>
+          </div>
+          <div class="calendar-wrap" aria-label="Practice activity calendar">
+            <div id="calendarMonths" class="calendar-months" aria-hidden="true"></div>
+            <div id="calendarGrid" class="calendar-grid"></div>
+          </div>
+          <div class="legend" aria-label="Calendar intensity legend">
+            <span>Less</span>
+            <span class="legend-cell level-0"></span>
+            <span class="legend-cell level-1"></span>
+            <span class="legend-cell level-2"></span>
+            <span class="legend-cell level-3"></span>
+            <span class="legend-cell level-4"></span>
+            <span>More</span>
+          </div>
+        </section>
+
+        <section class="backup-panel" aria-labelledby="backupHeading">
+          <div>
+            <p class="eyebrow">Backup</p>
+            <h2 id="backupHeading">CSV</h2>
+          </div>
+          <div class="backup-actions">
+            <button id="exportButton" type="button">Export CSV</button>
+            <label class="file-button">
+              <span>Import CSV</span>
+              <input id="importFile" type="file" accept=".csv,text/csv">
+            </label>
+          </div>
+          <p id="backupStatus" class="backup-status" role="status"></p>
+        </section>
+      </section>
+    </main>
+
+    <script src="app.js" defer></script>
+  </body>
+</html>
