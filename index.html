@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#1f6f5b">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="Practice">
+    <meta name="apple-mobile-web-app-title" content="Polyglot">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <title>Language Practice</title>
+    <title>Polyglot</title>
     <link rel="manifest" href="manifest.webmanifest">
-    <link rel="icon" href="icon.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="icon.svg">
+    <link rel="icon" href="flag%20icon.png" type="image/png">
+    <link rel="apple-touch-icon" href="flag%20icon.png">
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
@@ -27,13 +27,32 @@
       <section id="appPanel" hidden>
         <header class="topbar">
           <div>
+            <p class="eyebrow">Polyglot</p>
             <p class="eyebrow" id="weekRange"></p>
-            <h1 id="targetLanguage">Language Practice</h1>
+            <h1 id="targetLanguage">Polyglot</h1>
           </div>
           <button id="resetAnchorButton" class="icon-button" type="button" title="Change current week language" aria-label="Change current week language">
             <span aria-hidden="true">Reset</span>
           </button>
         </header>
+
+        <section class="score-panel" aria-label="Score dashboard">
+          <div class="score-total">
+            <p class="eyebrow">Selected day</p>
+            <strong id="dailyPoints">0</strong>
+            <span>points</span>
+          </div>
+          <div class="score-total">
+            <p class="eyebrow">Selected week</p>
+            <strong id="weeklyPoints">0</strong>
+            <span>points</span>
+          </div>
+          <div class="score-total">
+            <p class="eyebrow">All time</p>
+            <strong id="totalPoints">0</strong>
+            <span>points</span>
+          </div>
+        </section>
 
         <section class="today-panel" aria-labelledby="dailyHeading">
           <div class="section-heading">
@@ -41,7 +60,13 @@
               <p class="eyebrow" id="todayDate"></p>
               <h2 id="dailyHeading">Daily</h2>
             </div>
-            <div class="completion-pill" id="dailySummary"></div>
+            <div class="daily-controls">
+              <label class="date-control">
+                <span>Date</span>
+                <input id="recordingDate" type="date" required>
+              </label>
+              <div class="completion-pill" id="dailySummary"></div>
+            </div>
           </div>
           <div id="dailyTasks" class="daily-list"></div>
         </section>

@@ -1,6 +1,6 @@
-# Language Practice PWA
+# Polyglot PWA
 
-A small static app for tracking rotating daily language practice and supplementary activities.
+A small static app for tracking rotating daily language practice, scored progress, and supplementary activities.
 
 ## Run Locally
 

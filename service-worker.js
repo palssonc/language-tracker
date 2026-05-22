@@ -1,11 +1,11 @@
-const CACHE_NAME = "language-practice-v1";
+const CACHE_NAME = "polyglot-v2";
 const APP_ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
   "./manifest.webmanifest",
-  "./icon.svg",
+  "./flag icon.png",
 ];
 
 self.addEventListener("install", (event) => {

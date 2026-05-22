@@ -1,39 +1,30 @@
 const LANGUAGES = ["Portuguese", "Haitian Creole", "Spanish", "French"];
-const LANGUAGE_FLAGS = {
-  Portuguese: {
-    label: "Brazil",
-    emoji: "\uD83C\uDDE7\uD83C\uDDF7",
-  },
-  "Haitian Creole": {
-    label: "Haiti",
-    emoji: "\uD83C\uDDED\uD83C\uDDF9",
-  },
-  Spanish: {
-    label: "Venezuela",
-    emoji: "\uD83C\uDDFB\uD83C\uDDEA",
-  },
-  French: {
-    label: "Benin",
-    emoji: "\uD83C\uDDE7\uD83C\uDDEF",
-  },
-};
-const DAILY_TASKS = ["Read BoM", "Pray", "Flash cards"];
-const SUPPLEMENTARY_TASKS = [
-  "Podcast",
-  "Journal",
-  "Shadowing",
-  "Poetry",
-  "News article",
-  "Grammar exercise",
-  "Show/movie",
-  "Text friend",
-  "Send voicemail",
-  "Tutoring",
+const TASKS = [
+  { name: "Read BoM", kind: "daily", points: 5 },
+  { name: "Pray", kind: "daily", points: 5 },
+  { name: "Flash cards", kind: "daily", points: 5 },
+  { name: "Podcast", kind: "supplementary", points: 5 },
+  { name: "Journal", kind: "supplementary", points: 13 },
+  { name: "Shadowing", kind: "supplementary", points: 10 },
+  { name: "Poetry", kind: "supplementary", points: 10 },
+  { name: "News article", kind: "supplementary", points: 9 },
+  { name: "Grammar exercise", kind: "supplementary", points: 8 },
+  { name: "Show/movie", kind: "supplementary", points: 6 },
+  { name: "Text friend", kind: "supplementary", points: 6 },
+  { name: "Send voicemail", kind: "supplementary", points: 12 },
+  { name: "AI Convo", kind: "supplementary", points: 12 },
+  { name: "Tutoring", kind: "supplementary", points: 15 },
 ];
+const DAILY_TASKS = TASKS.filter((task) => task.kind === "daily");
+const SUPPLEMENTARY_TASKS = TASKS.filter((task) => task.kind === "supplementary");
+const TASK_BY_NAME = Object.fromEntries(TASKS.map((task) => [task.name, task]));
+const DAILY_BONUS = 5;
+const BACKDATE_DEDUCTION = 10;
 const STORAGE_KEY = "language-practice-pwa:v1";
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 const state = loadState();
+let selectedDate = todayKey();
 
 const setupPanel = document.querySelector("#setupPanel");
 const appPanel = document.querySelector("#appPanel");
@@ -42,8 +33,12 @@ const weekRange = document.querySelector("#weekRange");
 const targetLanguage = document.querySelector("#targetLanguage");
 const resetAnchorButton = document.querySelector("#resetAnchorButton");
 const todayDate = document.querySelector("#todayDate");
+const recordingDate = document.querySelector("#recordingDate");
 const dailyTasks = document.querySelector("#dailyTasks");
 const dailySummary = document.querySelector("#dailySummary");
+const dailyPoints = document.querySelector("#dailyPoints");
+const weeklyPoints = document.querySelector("#weeklyPoints");
+const totalPoints = document.querySelector("#totalPoints");
 const supplementTask = document.querySelector("#supplementTask");
 const supplementLanguage = document.querySelector("#supplementLanguage");
 const supplementForm = document.querySelector("#supplementForm");
@@ -54,9 +49,6 @@ const calendarMonths = document.querySelector("#calendarMonths");
 const exportButton = document.querySelector("#exportButton");
 const importFile = document.querySelector("#importFile");
 const backupStatus = document.querySelector("#backupStatus");
-const manifestLink = document.querySelector("link[rel='manifest']");
-const faviconLink = document.querySelector("link[rel='icon']");
-const appleTouchIconLink = document.querySelector("link[rel='apple-touch-icon']");
 
 init();
 
@@ -81,42 +73,6 @@ function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
-function updateAppIcon(language) {
-  const flag = LANGUAGE_FLAGS[language] || LANGUAGE_FLAGS.Portuguese;
-  const svg = [
-    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'>",
-    "<rect width='512' height='512' rx='96' fill='#1f6f5b'/>",
-    "<circle cx='256' cy='256' r='168' fill='#ffffff'/>",
-    `<text x='256' y='306' text-anchor='middle' font-size='218' font-family='Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji, sans-serif'>${flag.emoji}</text>`,
-    "</svg>",
-  ].join("");
-  const url = `data:image/svg+xml,${encodeURIComponent(svg)}`;
-  const manifest = {
-    name: "Language Practice",
-    short_name: "Practice",
-    description: "Track rotating daily language practice and supplementary activities.",
-    start_url: "./",
-    scope: "./",
-    display: "standalone",
-    background_color: "#eef2f1",
-    theme_color: "#1f6f5b",
-    icons: [
-      {
-        src: url,
-        sizes: "any",
-        type: "image/svg+xml",
-        purpose: "any maskable",
-      },
-    ],
-  };
-  const manifestUrl = `data:application/manifest+json,${encodeURIComponent(JSON.stringify(manifest))}`;
-  document.title = `${flag.emoji} Language Practice`;
-  manifestLink.href = manifestUrl;
-  faviconLink.href = url;
-  appleTouchIconLink.href = url;
-  appleTouchIconLink.setAttribute("aria-label", `${flag.label} flag icon`);
-}
-
 function bindEvents() {
   resetAnchorButton.addEventListener("click", () => {
     state.anchorWeekStart = null;
@@ -131,13 +87,17 @@ function bindEvents() {
       kind: "supplementary",
       task: supplementTask.value,
       language: supplementLanguage.value,
-      date: todayKey(),
+      date: selectedDate,
     });
     supplementForm.reset();
-    supplementLanguage.value = currentTargetLanguage();
+    supplementLanguage.value = targetLanguageForDate(selectedDate);
     render();
   });
 
+  recordingDate.addEventListener("change", () => {
+    selectedDate = isRecordableDate(recordingDate.value) ? recordingDate.value : todayKey();
+    render();
+  });
   calendarFilter.addEventListener("change", renderCalendar);
   exportButton.addEventListener("click", exportCsv);
   importFile.addEventListener("change", importCsv);
@@ -160,13 +120,19 @@ function populateSetup() {
 }
 
 function populateSelects() {
-  supplementTask.innerHTML = optionList(SUPPLEMENTARY_TASKS);
+  supplementTask.innerHTML = taskOptionList(SUPPLEMENTARY_TASKS);
   supplementLanguage.innerHTML = optionList(LANGUAGES);
   calendarFilter.innerHTML = optionList(["All activities", ...LANGUAGES]);
 }
 
 function optionList(values) {
   return values.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("");
+}
+
+function taskOptionList(tasks) {
+  return tasks.map((task) => (
+    `<option value="${escapeHtml(task.name)}">${escapeHtml(taskLabel(task))}</option>`
+  )).join("");
 }
 
 function render() {
@@ -179,21 +145,23 @@ function render() {
   setupPanel.hidden = true;
   appPanel.hidden = false;
   const target = currentTargetLanguage();
-  updateAppIcon(target);
   targetLanguage.textContent = target;
   weekRange.textContent = formatWeekRange(currentWeekStart());
-  todayDate.textContent = formatLongDate(new Date());
-  supplementLanguage.value = target;
+  recordingDate.max = todayKey();
+  recordingDate.value = selectedDate;
+  todayDate.textContent = formatLongDate(parseLocalDate(selectedDate));
+  supplementLanguage.value = targetLanguageForDate(selectedDate);
   renderDailyTasks();
   renderSupplementList();
+  renderScoreDashboard();
   renderCalendar();
 }
 
 function renderDailyTasks() {
   dailyTasks.innerHTML = "";
-  const date = todayKey();
-  const target = currentTargetLanguage();
-  const completed = DAILY_TASKS.filter((task) => hasDailyEntry(date, task, target));
+  const date = selectedDate;
+  const target = targetLanguageForDate(date);
+  const completed = DAILY_TASKS.filter((task) => hasDailyEntry(date, task.name, target));
   dailySummary.textContent = `${completed.length}/${DAILY_TASKS.length}`;
 
   DAILY_TASKS.forEach((task) => {
@@ -201,20 +169,20 @@ function renderDailyTasks() {
     label.className = "daily-task";
     const input = document.createElement("input");
     input.type = "checkbox";
-    input.checked = hasDailyEntry(date, task, target);
-    input.addEventListener("change", () => toggleDailyTask(date, task, target, input.checked));
-    label.append(input, document.createTextNode(task));
+    input.checked = hasDailyEntry(date, task.name, target);
+    input.addEventListener("change", () => toggleDailyTask(date, task.name, target, input.checked));
+    label.append(input, document.createTextNode(taskLabel(task)));
     dailyTasks.append(label);
   });
 }
 
 function renderSupplementList() {
-  const entries = state.entries.filter((entry) => entry.kind === "supplementary" && entry.date === todayKey());
+  const entries = state.entries.filter((entry) => entry.kind === "supplementary" && entry.date === selectedDate);
   supplementList.innerHTML = "";
   if (!entries.length) {
     const empty = document.createElement("p");
     empty.className = "backup-status";
-    empty.textContent = "No supplementary practice logged today.";
+    empty.textContent = "No supplementary practice logged for this date.";
     supplementList.append(empty);
     return;
   }
@@ -222,7 +190,7 @@ function renderSupplementList() {
   entries.forEach((entry) => {
     const chip = document.createElement("span");
     chip.className = "entry-chip";
-    chip.textContent = `${entry.task} - ${entry.language}`;
+    chip.textContent = `${taskLabel(TASK_BY_NAME[entry.task])} - ${entry.language}`;
     const remove = document.createElement("button");
     remove.type = "button";
     remove.title = "Remove entry";
@@ -238,6 +206,13 @@ function renderSupplementList() {
   });
 }
 
+function renderScoreDashboard() {
+  const weekStart = weekStartKey(parseLocalDate(selectedDate));
+  dailyPoints.textContent = scoreDate(selectedDate);
+  weeklyPoints.textContent = scoreRange(weekStart, addDays(parseLocalDate(weekStart), 6));
+  totalPoints.textContent = scoreAllDates();
+}
+
 function renderCalendar() {
   const today = startOfDay(new Date());
   const firstVisible = addDays(today, -364);
@@ -250,10 +225,10 @@ function renderCalendar() {
 
   for (let date = new Date(gridStart); date <= gridEnd; date = addDays(date, 1)) {
     const key = dateKey(date);
-    const count = activityCount(key, filter);
+    const points = scoreDate(key, filter);
     const cell = document.createElement("div");
-    cell.className = `day-cell level-${intensityLevel(count)}`;
-    cell.title = `${formatLongDate(date)}: ${count} ${count === 1 ? "activity" : "activities"}`;
+    cell.className = `day-cell level-${intensityLevel(points)}`;
+    cell.title = `${formatLongDate(date)}: ${pointText(points)}`;
     cell.setAttribute("role", "img");
     cell.setAttribute("aria-label", cell.title);
     calendarGrid.append(cell);
@@ -284,6 +259,7 @@ function addEntry(entry) {
   state.entries.push({
     id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
     createdAt: new Date().toISOString(),
+    backdated: entry.date < todayKey(),
     ...entry,
   });
   saveState();
@@ -295,23 +271,68 @@ function hasDailyEntry(date, task, language) {
   ));
 }
 
-function activityCount(date, filter) {
-  return state.entries.filter((entry) => (
-    entry.date === date && (filter === "All activities" || entry.language === filter)
-  )).length;
+function taskLabel(task) {
+  return `${task.name} (${task.points})`;
 }
 
-function intensityLevel(count) {
-  if (count <= 0) return 0;
-  if (count === 1) return 1;
-  if (count <= 3) return 2;
-  if (count <= 5) return 3;
+function pointText(points) {
+  return `${points} ${points === 1 ? "point" : "points"}`;
+}
+
+function scoreDate(date, filter = "All activities") {
+  const entries = entriesForDate(date, filter);
+  const taskPoints = entries.reduce((sum, entry) => sum + TASK_BY_NAME[entry.task].points, 0);
+  const dailyBonus = completeDailyLanguages(entries).length * DAILY_BONUS;
+  const backdateDeduction = entries.some((entry) => entry.backdated) ? BACKDATE_DEDUCTION : 0;
+  return taskPoints + dailyBonus - backdateDeduction;
+}
+
+function scoreRange(startKey, endDate) {
+  let total = 0;
+  for (let date = parseLocalDate(startKey); date <= endDate; date = addDays(date, 1)) {
+    total += scoreDate(dateKey(date));
+  }
+  return total;
+}
+
+function scoreAllDates() {
+  return [...new Set(state.entries.map((entry) => entry.date))]
+    .reduce((sum, date) => sum + scoreDate(date), 0);
+}
+
+function entriesForDate(date, filter) {
+  return state.entries.filter((entry) => (
+    entry.date === date && (filter === "All activities" || entry.language === filter)
+  ));
+}
+
+function completeDailyLanguages(entries) {
+  const dailyByLanguage = new Map();
+  entries.filter((entry) => entry.kind === "daily").forEach((entry) => {
+    const tasks = dailyByLanguage.get(entry.language) || new Set();
+    tasks.add(entry.task);
+    dailyByLanguage.set(entry.language, tasks);
+  });
+  return [...dailyByLanguage.entries()]
+    .filter(([, tasks]) => DAILY_TASKS.every((task) => tasks.has(task.name)))
+    .map(([language]) => language);
+}
+
+function intensityLevel(points) {
+  if (points <= 0) return 0;
+  if (points <= 5) return 1;
+  if (points <= 15) return 2;
+  if (points <= 30) return 3;
   return 4;
 }
 
 function currentTargetLanguage() {
+  return targetLanguageForDate(todayKey());
+}
+
+function targetLanguageForDate(date) {
   const anchorIndex = LANGUAGES.indexOf(state.anchorLanguage);
-  const weeks = Math.floor((parseLocalDate(weekStartKey(new Date())) - parseLocalDate(state.anchorWeekStart)) / (7 * MS_PER_DAY));
+  const weeks = Math.floor((parseLocalDate(weekStartKey(parseLocalDate(date))) - parseLocalDate(state.anchorWeekStart)) / (7 * MS_PER_DAY));
   return LANGUAGES[((anchorIndex + weeks) % LANGUAGES.length + LANGUAGES.length) % LANGUAGES.length];
 }
 
@@ -327,6 +348,10 @@ function weekStartKey(date) {
 
 function todayKey() {
   return dateKey(new Date());
+}
+
+function isRecordableDate(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) && value <= todayKey();
 }
 
 function dateKey(date) {
@@ -363,8 +388,8 @@ function formatWeekRange(start) {
 
 function exportCsv() {
   const rows = [
-    ["record_type", "id", "date", "kind", "task", "language", "created_at", "anchor_week_start", "anchor_language"],
-    ["meta", "", "", "", "", "", new Date().toISOString(), state.anchorWeekStart, state.anchorLanguage],
+    ["record_type", "id", "date", "kind", "task", "language", "created_at", "backdated", "anchor_week_start", "anchor_language"],
+    ["meta", "", "", "", "", "", new Date().toISOString(), "", state.anchorWeekStart, state.anchorLanguage],
     ...state.entries.map((entry) => [
       "entry",
       entry.id,
@@ -373,6 +398,7 @@ function exportCsv() {
       entry.task,
       entry.language,
       entry.createdAt,
+      entry.backdated ? "true" : "",
       "",
       "",
     ]),
@@ -381,7 +407,7 @@ function exportCsv() {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = `language-practice-${todayKey()}.csv`;
+  anchor.download = `polyglot-${todayKey()}.csv`;
   anchor.click();
   URL.revokeObjectURL(url);
   backupStatus.textContent = "CSV backup exported.";
@@ -405,6 +431,7 @@ function importCsv(event) {
         task: row.task,
         language: row.language,
         createdAt: row.created_at || new Date().toISOString(),
+        backdated: row.backdated === "true",
       })).filter(isValidEntry);
 
       if (!meta || !meta.anchor_week_start || !LANGUAGES.includes(meta.anchor_language)) {
@@ -426,10 +453,10 @@ function importCsv(event) {
 }
 
 function isValidEntry(entry) {
-  const validTask = entry.kind === "daily" ? DAILY_TASKS.includes(entry.task) : SUPPLEMENTARY_TASKS.includes(entry.task);
+  const task = TASK_BY_NAME[entry.task];
   return /^\d{4}-\d{2}-\d{2}$/.test(entry.date)
     && ["daily", "supplementary"].includes(entry.kind)
-    && validTask
+    && task?.kind === entry.kind
     && LANGUAGES.includes(entry.language);
 }
 
